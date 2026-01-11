@@ -1,0 +1,766 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enum pour le genre
+enum Gender {
+  M
+  F
+  Autre
+}
+
+// Enum pour le statut des rendez-vous
+enum AppointmentStatus {
+  scheduled
+  completed
+  cancelled
+  no_show
+}
+
+// ============================================
+// TABLES DE BASE (10 tables)
+// ============================================
+
+// Modèle Admin (Administrateur)
+model Admin {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  firstName String   @map("first_name")
+  lastName  String   @map("last_name")
+  phone     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("admins")
+  @@index([email])
+}
+
+// Modèle Receptionist (Réceptionniste)
+model Receptionist {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  firstName String   @map("first_name")
+  lastName  String   @map("last_name")
+  phone     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations Many-to-Many
+  appointments Appointment[] @relation("AppointmentReceptionist") // Rendez-vous
+  notifications DoctorNotification[] @relation("ReceptionistNotification") // Notifications reçues par le réceptionniste
+
+  @@map("receptionists")
+  @@index([email])
+}
+
+// Modèle Patient
+model Patient {
+  id              String    @id @default(uuid())
+  firstName       String    @map("first_name")
+  lastName        String    @map("last_name")
+  dateOfBirth     DateTime  @map("date_of_birth") @db.Date
+  gender          Gender
+  phone           String
+  email           String?
+  address         String?
+  insuranceNumber String?   @map("insurance_number")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations Many-to-Many
+  appointments Appointment[] @relation("AppointmentPatient") // Rendez-vous
+  nurses       PatientNurse[] @relation("PatientNurse")
+  
+  // Relation One-to-One : un patient a un seul dossier médical
+  medicalRecord MedicalRecord? @relation("PatientMedicalRecord")
+
+  // Relations One-to-Many
+  invoices       Invoice[]        @relation("PatientInvoice")
+  examinations   Examination[]    @relation("PatientExamination")
+  allergies      Allergy[]        @relation("PatientAllergy")
+  medicalHistories MedicalHistory[] @relation("PatientMedicalHistory")
+  familyHistories FamilyHistory[] @relation("PatientFamilyHistory")
+  documents      Document[]       @relation("PatientDocument")
+
+  @@map("patients")
+}
+
+// Modèle Doctor (Médecin)
+model Doctor {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  firstName String   @map("first_name")
+  lastName  String   @map("last_name")
+  phone     String?
+  specialty String?  // Spécialité médicale
+  notes     String?  // Notes sur le médecin
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  appointments Appointment[] @relation("AppointmentDoctor") // Many-to-One : un médecin peut avoir plusieurs rendez-vous
+  notifications DoctorNotification[] @relation("DoctorNotification") // Notifications envoyées par le médecin
+  
+  // Relations Many-to-Many
+  nurses DoctorNurse[] @relation("DoctorNurse")
+
+  @@map("doctors")
+  @@index([email])
+  @@index([specialty])
+}
+
+// Modèle Prescription (Ordonnance médicale)
+model Prescription {
+  id             String   @id @default(uuid())
+  instructions   String?  // Instructions générales pour le patient
+  prescribedBy   String?  @map("prescribed_by") // ID du médecin qui prescrit
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations Many-to-One : une prescription peut avoir plusieurs rendez-vous/consultations
+  appointments Appointment[] @relation("AppointmentPrescription")
+
+  // Relations Many-to-Many
+  medicaments PrescriptionMedicament[] @relation("PrescriptionMedicament")
+
+  @@map("prescriptions")
+  @@index([prescribedBy])
+}
+
+// Modèle Medicament (Médicament)
+model Medicament {
+  id          String   @id @default(uuid())
+  name        String   // Nom du médicament
+  category    String?  // Catégorie (ex: Antalgique, Antibiotique, etc.)
+  description String?  // Description
+  unit        String?  // Unité (mg, ml, etc.)
+  stock       Int      @default(0) // Stock disponible
+  minStock    Int      @default(0) // Stock minimum
+  price       Decimal? @db.Decimal(10, 2) // Prix unitaire
+  expiryDate  DateTime? @map("expiry_date") @db.Date // Date d'expiration
+  supplier    String?  // Fournisseur
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations Many-to-Many
+  prescriptions PrescriptionMedicament[] @relation("PrescriptionMedicament")
+
+  // Relations One-to-Many
+  stockMovements StockMovement[] @relation("MedicamentStockMovement")
+
+  @@map("medicaments")
+  @@index([name])
+  @@index([category])
+}
+
+// Modèle Radio
+model Radio {
+  id          String   @id @default(uuid())
+  name        String   // Nom du type de radio
+  description String?  // Description
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations Many-to-Many
+  appointments AppointmentRadio[] @relation("AppointmentRadio")
+  medicalRecords MedicalRecordRadio[] @relation("MedicalRecordRadio")
+
+  @@map("radios")
+  @@index([name])
+}
+
+// Modèle Operation
+model Operation {
+  id          String   @id @default(uuid())
+  name        String   // Nom du type d'opération
+  description String?  // Description
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations Many-to-Many
+  appointments AppointmentOperation[] @relation("AppointmentOperation")
+  medicalRecords MedicalRecordOperation[] @relation("MedicalRecordOperation")
+
+  @@map("operations")
+  @@index([name])
+}
+
+// Modèle Nurse (Infirmière)
+model Nurse {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  firstName String   @map("first_name")
+  lastName  String   @map("last_name")
+  phone     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations Many-to-Many
+  doctors  DoctorNurse[]  @relation("DoctorNurse")
+  patients PatientNurse[] @relation("PatientNurse")
+
+  @@map("nurses")
+  @@index([email])
+}
+
+// Modèle Etage (Étage)
+model Etage {
+  id          String   @id @default(uuid())
+  name        String   @unique // Nom de l'étage (ex: "Rez-de-chaussée", "1er étage", "2ème étage")
+  description String?  // Description de l'étage
+  floorNumber Int?     @map("floor_number") // Numéro d'étage (0, 1, 2, etc.)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations One-to-Many
+  blocs       Bloc[]         @relation("BlocEtage") // Un étage contient plusieurs blocs
+  appointments Appointment[] @relation("AppointmentEtage") // Un étage peut avoir plusieurs rendez-vous
+
+  @@map("etages")
+  @@index([name])
+  @@index([floorNumber])
+}
+
+// Modèle Bloc
+model Bloc {
+  id          String   @id @default(uuid())
+  name        String   // Nom du bloc (ex: "Bloc A", "Bloc Chirurgie")
+  description String?  // Description du bloc
+  location    String?  // Localisation du bloc
+  etageId     String   @map("etage_id") // Many-to-One : un bloc appartient à un étage
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  etage Etage  @relation("BlocEtage", fields: [etageId], references: [id], onDelete: Cascade) // Many-to-One : un bloc appartient à un étage
+  salles Salle[] @relation("SalleBloc") // One-to-Many : un bloc contient plusieurs salles
+  appointments Appointment[] @relation("AppointmentBloc") // One-to-Many : un bloc peut avoir plusieurs rendez-vous
+
+  @@map("blocs")
+  @@index([name])
+  @@index([etageId])
+}
+
+// Modèle Salle (Salle)
+model Salle {
+  id          String   @id @default(uuid())
+  name        String   // Nom de la salle (ex: "Salle 101", "Salle d'opération 1")
+  description String?  // Description de la salle
+  capacity    Int?     // Capacité (nombre de personnes)
+  equipment   String?  // Équipements disponibles
+  blocId      String   @map("bloc_id") // Many-to-One : une salle appartient à un bloc
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  bloc Bloc @relation("SalleBloc", fields: [blocId], references: [id], onDelete: Cascade) // Many-to-One : une salle appartient à un bloc
+  appointments Appointment[] @relation("AppointmentSalle") // One-to-Many : une salle peut avoir plusieurs rendez-vous
+
+  @@map("salles")
+  @@index([name])
+  @@index([blocId])
+}
+
+// Modèle ConsultationTemplate (Consultations prédéfinies)
+model ConsultationTemplate {
+  id          String   @id @default(uuid())
+  name        String   // Nom du modèle (ex: "Consultation générale", "Suivi post-opératoire")
+  category    String?  // Catégorie (ex: "Générale", "Spécialisée", "Urgence")
+  diagnosis   String?  // Diagnostic prédéfini
+  notes       String?  // Notes prédéfinies
+  description String?  // Description du modèle
+  createdBy   String?  @map("created_by") // ID du médecin/admin qui a créé le modèle
+  isPublic    Boolean  @default(true) @map("is_public") // Si true, visible par tous les médecins
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("consultation_templates")
+  @@index([category])
+  @@index([isPublic])
+}
+
+// Modèle MedicalRecord (Dossier Médical)
+model MedicalRecord {
+  id          String   @id @default(uuid())
+  patientId   String   @map("patient_id")
+  title       String?  // Titre du dossier
+  description String?  // Description du dossier
+  notes       String?  // Notes du médecin
+  diagnosis   String?  // Diagnostic
+  symptoms    String?  // Symptômes
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations Many-to-One
+  patient     Patient  @relation("PatientMedicalRecord", fields: [patientId], references: [id], onDelete: Cascade)
+
+  // Relations Many-to-Many
+  radios      MedicalRecordRadio[]      @relation("MedicalRecordRadio")
+  operations  MedicalRecordOperation[]  @relation("MedicalRecordOperation")
+
+  // Relations One-to-Many
+  documents   Document[]                 @relation("MedicalRecordDocument")
+
+  @@map("medical_records")
+  @@unique([patientId]) // One-to-One : un patient ne peut avoir qu'un seul dossier médical
+}
+
+// ============================================
+// TABLES DE JONCTION MANY-TO-MANY (8 tables)
+// ============================================
+
+// Table de jonction : Receptionist ↔ Patient (nommée "Rendez-vous")
+// Contient aussi les attributs de consultation (One-to-One)
+model Appointment {
+  id             String            @id @default(uuid())
+  patientId      String            @map("patient_id")
+  receptionistId String?           @map("receptionist_id") // Temporairement optionnel pour migration
+  doctorId       String            @map("doctor_id") // Many-to-One : un médecin peut avoir plusieurs rendez-vous
+  etageId        String?           @map("etage_id") // Many-to-One : un étage peut avoir plusieurs rendez-vous
+  blocId         String?           @map("bloc_id") // Many-to-One : un bloc peut avoir plusieurs rendez-vous
+  salleId        String?           @map("salle_id") // Many-to-One : une salle peut avoir plusieurs rendez-vous
+  prescriptionId String?           @map("prescription_id") // Many-to-One : une prescription peut avoir plusieurs rendez-vous/consultations
+  date           DateTime          @db.Date
+  time           String            // Format HH:MM
+  duration       Int               @default(30) // en minutes
+  status         AppointmentStatus @default(scheduled)
+  reason         String?
+  notes          String?
+  
+  // Attributs de consultation (One-to-One avec rendez-vous)
+  diagnosis      String?           // Diagnostic du médecin
+  consultationNotes String?        @map("consultation_notes") // Notes de consultation
+  consultation   Json?             // Rapports de consultation (structure JSON, ex: liste d'objets)
+  
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+
+  // Relations Many-to-Many (Receptionist ↔ Patient)
+  patient        Patient      @relation("AppointmentPatient", fields: [patientId], references: [id], onDelete: Cascade)
+  receptionist   Receptionist? @relation("AppointmentReceptionist", fields: [receptionistId], references: [id], onDelete: Cascade)
+  
+  // Relation Many-to-One avec médecin
+  doctor         Doctor       @relation("AppointmentDoctor", fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  // Relation Many-to-One avec étage
+  etage           Etage?      @relation("AppointmentEtage", fields: [etageId], references: [id], onDelete: SetNull)
+  
+  // Relation Many-to-One avec bloc
+  bloc            Bloc?       @relation("AppointmentBloc", fields: [blocId], references: [id], onDelete: SetNull)
+  
+  // Relation Many-to-One avec salle
+  salle           Salle?      @relation("AppointmentSalle", fields: [salleId], references: [id], onDelete: SetNull)
+  
+  // Relation Many-to-One avec prescription
+  prescription   Prescription? @relation("AppointmentPrescription", fields: [prescriptionId], references: [id], onDelete: SetNull)
+  
+  // Relations Many-to-Many
+  radios         AppointmentRadio[]      @relation("AppointmentRadio")
+  operations     AppointmentOperation[]   @relation("AppointmentOperation")
+  notifications  DoctorNotification[]     @relation("AppointmentNotification")
+
+  // Relations One-to-Many
+  invoices     Invoice[]     @relation("AppointmentInvoice")
+  examinations Examination[] @relation("AppointmentExamination")
+  documents    Document[]    @relation("AppointmentDocument")
+
+  @@map("appointments")
+  @@index([patientId])
+  @@index([receptionistId])
+  @@index([doctorId])
+  @@index([etageId])
+  @@index([blocId])
+  @@index([salleId])
+  @@index([prescriptionId])
+  @@index([date])
+}
+
+// Table de jonction : Prescription ↔ Medicament
+model PrescriptionMedicament {
+  id             String   @id @default(uuid())
+  prescriptionId String   @map("prescription_id")
+  medicamentId   String   @map("medicament_id")
+  quantity       Int      @default(1) // Quantité prescrite (ex: 2 boîtes)
+  dosage         String   // Dosage spécifique pour ce médicament (ex: 500mg, 1 comprimé)
+  frequency      String   // Fréquence de prise (ex: 3 fois par jour, matin et soir)
+  duration       String   // Durée du traitement (ex: 7 jours, 1 mois)
+  instructions   String?  // Instructions spécifiques pour ce médicament
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  // Relations
+  prescription Prescription @relation("PrescriptionMedicament", fields: [prescriptionId], references: [id], onDelete: Cascade)
+  medicament   Medicament   @relation("PrescriptionMedicament", fields: [medicamentId], references: [id], onDelete: Cascade)
+
+  @@unique([prescriptionId, medicamentId])
+  @@map("prescription_medicament")
+  @@index([prescriptionId])
+  @@index([medicamentId])
+}
+
+// Table de jonction : Appointment (Rendez-vous/Consultation) ↔ Radio
+model AppointmentRadio {
+  id             String   @id @default(uuid())
+  appointmentId String   @map("appointment_id")
+  radioId        String   @map("radio_id")
+  results        String?  // Résultats de la radio
+  notes          String?  // Notes supplémentaires
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  // Relations
+  appointment Appointment @relation("AppointmentRadio", fields: [appointmentId], references: [id], onDelete: Cascade)
+  radio        Radio      @relation("AppointmentRadio", fields: [radioId], references: [id], onDelete: Cascade)
+
+  @@unique([appointmentId, radioId])
+  @@map("appointment_radio")
+  @@index([appointmentId])
+  @@index([radioId])
+}
+
+// Table de jonction : Appointment (Rendez-vous/Consultation) ↔ Operation
+model AppointmentOperation {
+  id             String   @id @default(uuid())
+  appointmentId String   @map("appointment_id")
+  operationId    String   @map("operation_id")
+  date           DateTime? @db.Date // Date de l'opération
+  notes          String?  // Notes sur l'opération
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  // Relations
+  appointment Appointment @relation("AppointmentOperation", fields: [appointmentId], references: [id], onDelete: Cascade)
+  operation    Operation   @relation("AppointmentOperation", fields: [operationId], references: [id], onDelete: Cascade)
+
+  @@unique([appointmentId, operationId])
+  @@map("appointment_operation")
+  @@index([appointmentId])
+  @@index([operationId])
+}
+
+// Table de jonction Many-to-Many : Doctor ↔ Nurse
+model DoctorNurse {
+  id        String   @id @default(uuid())
+  doctorId  String   @map("doctor_id")
+  nurseId   String   @map("nurse_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  doctor Doctor @relation("DoctorNurse", fields: [doctorId], references: [id], onDelete: Cascade)
+  nurse  Nurse  @relation("DoctorNurse", fields: [nurseId], references: [id], onDelete: Cascade)
+
+  @@unique([doctorId, nurseId])
+  @@map("doctor_nurse")
+  @@index([doctorId])
+  @@index([nurseId])
+}
+
+// Table de jonction Many-to-Many : Patient ↔ Nurse
+model PatientNurse {
+  id        String   @id @default(uuid())
+  patientId String   @map("patient_id")
+  nurseId   String   @map("nurse_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  patient Patient @relation("PatientNurse", fields: [patientId], references: [id], onDelete: Cascade)
+  nurse   Nurse   @relation("PatientNurse", fields: [nurseId], references: [id], onDelete: Cascade)
+
+  @@unique([patientId, nurseId])
+  @@map("patient_nurse")
+  @@index([patientId])
+  @@index([nurseId])
+}
+
+// Table de jonction Many-to-Many : MedicalRecord ↔ Radio
+model MedicalRecordRadio {
+  id              String   @id @default(uuid())
+  medicalRecordId String   @map("medical_record_id")
+  radioId          String   @map("radio_id")
+  results          String?  // Résultats de la radio
+  notes            String?  // Notes supplémentaires
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  // Relations
+  medicalRecord MedicalRecord @relation("MedicalRecordRadio", fields: [medicalRecordId], references: [id], onDelete: Cascade)
+  radio          Radio         @relation("MedicalRecordRadio", fields: [radioId], references: [id], onDelete: Cascade)
+
+  @@unique([medicalRecordId, radioId])
+  @@map("medical_record_radio")
+  @@index([medicalRecordId])
+  @@index([radioId])
+}
+
+// Table de jonction Many-to-Many : MedicalRecord ↔ Operation
+model MedicalRecordOperation {
+  id              String   @id @default(uuid())
+  medicalRecordId String   @map("medical_record_id")
+  operationId      String   @map("operation_id")
+  date             DateTime? @db.Date // Date de l'opération
+  notes            String?  // Notes sur l'opération
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  // Relations
+  medicalRecord MedicalRecord @relation("MedicalRecordOperation", fields: [medicalRecordId], references: [id], onDelete: Cascade)
+  operation      Operation     @relation("MedicalRecordOperation", fields: [operationId], references: [id], onDelete: Cascade)
+
+  @@unique([medicalRecordId, operationId])
+  @@map("medical_record_operation")
+  @@index([medicalRecordId])
+  @@index([operationId])
+}
+
+// Table de notifications pour la communication médecin-réceptionniste
+model DoctorNotification {
+  id             String   @id @default(uuid())
+  appointmentId   String   @map("appointment_id")
+  doctorId       String   @map("doctor_id")
+  receptionistId String   @map("receptionist_id")
+  type           String   // Type de notification: "patient_ready", "consultation_complete", etc.
+  message        String?  // Message optionnel
+  isRead         Boolean  @default(false) @map("is_read")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  appointment  Appointment @relation("AppointmentNotification", fields: [appointmentId], references: [id], onDelete: Cascade)
+  doctor       Doctor      @relation("DoctorNotification", fields: [doctorId], references: [id], onDelete: Cascade)
+  receptionist Receptionist @relation("ReceptionistNotification", fields: [receptionistId], references: [id], onDelete: Cascade)
+
+  @@map("doctor_notifications")
+  @@index([appointmentId])
+  @@index([doctorId])
+  @@index([receptionistId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+// Enum pour le statut des factures
+enum InvoiceStatus {
+  pending
+  paid
+  cancelled
+}
+
+// Modèle Invoice (Facture)
+model Invoice {
+  id              String        @id @default(uuid())
+  patientId      String        @map("patient_id")
+  appointmentId  String?       @map("appointment_id")
+  amount         Decimal       @db.Decimal(10, 2)
+  status         InvoiceStatus @default(pending)
+  paymentMethod  String?       @map("payment_method")
+  insuranceCoverage Decimal?   @map("insurance_coverage") @db.Decimal(10, 2)
+  notes          String?
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  paidAt         DateTime?     @map("paid_at")
+
+  // Relations
+  patient       Patient        @relation("PatientInvoice", fields: [patientId], references: [id], onDelete: Cascade)
+  appointment   Appointment?   @relation("AppointmentInvoice", fields: [appointmentId], references: [id], onDelete: SetNull)
+  reimbursements Reimbursement[] @relation("InvoiceReimbursement")
+
+  @@map("invoices")
+  @@index([patientId])
+  @@index([appointmentId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Enum pour le statut des examens médicaux
+enum ExaminationStatus {
+  requested
+  completed
+  cancelled
+}
+
+// Modèle Examination (Examen Médical)
+model Examination {
+  id            String            @id @default(uuid())
+  patientId     String            @map("patient_id")
+  appointmentId String?           @map("appointment_id")
+  type          String            // Type d'examen (Sang, Urines, ECG, etc.)
+  description   String?           // Description de l'examen
+  results       String?           // Résultats de l'examen
+  requestedDate DateTime           @map("requested_date") @db.Date
+  completedDate DateTime?          @map("completed_date") @db.Date
+  status        ExaminationStatus  @default(requested)
+  notes         String?           // Notes supplémentaires
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  patient     Patient     @relation("PatientExamination", fields: [patientId], references: [id], onDelete: Cascade)
+  appointment Appointment? @relation("AppointmentExamination", fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@map("examinations")
+  @@index([patientId])
+  @@index([appointmentId])
+  @@index([status])
+  @@index([requestedDate])
+}
+
+// Modèle Allergy (Allergie)
+model Allergy {
+  id          String   @id @default(uuid())
+  patientId   String   @map("patient_id")
+  name        String   // Nom de l'allergie
+  type        String?  // Type (Médicament, Aliment, Environnement, etc.)
+  severity    String?  // Gravité (Légère, Modérée, Sévère)
+  reaction    String?  // Réaction observée
+  notes       String?  // Notes supplémentaires
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  patient Patient @relation("PatientAllergy", fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@map("allergies")
+  @@index([patientId])
+  @@index([isActive])
+}
+
+// Modèle MedicalHistory (Antécédents Médicaux Personnels)
+model MedicalHistory {
+  id          String   @id @default(uuid())
+  patientId   String   @map("patient_id")
+  category    String   // Catégorie (Chirurgie, Maladie chronique, Hospitalisation, etc.)
+  condition   String   // Condition/Maladie
+  description String?  // Description détaillée
+  startDate   DateTime? @map("start_date") @db.Date
+  endDate     DateTime? @map("end_date") @db.Date
+  isActive    Boolean  @default(true) @map("is_active")
+  notes       String?  // Notes supplémentaires
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  patient Patient @relation("PatientMedicalHistory", fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@map("medical_histories")
+  @@index([patientId])
+  @@index([category])
+  @@index([isActive])
+}
+
+// Modèle FamilyHistory (Antécédents Familiaux)
+model FamilyHistory {
+  id          String   @id @default(uuid())
+  patientId   String   @map("patient_id")
+  relation    String   // Relation (Père, Mère, Grand-père, etc.)
+  condition   String   // Condition/Maladie
+  description String?  // Description détaillée
+  ageAtOnset  Int?     @map("age_at_onset") // Âge au début
+  notes       String?  // Notes supplémentaires
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  patient Patient @relation("PatientFamilyHistory", fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@map("family_histories")
+  @@index([patientId])
+  @@index([relation])
+}
+
+// Modèle Document (Document/Pièce jointe)
+model Document {
+  id            String   @id @default(uuid())
+  patientId     String?  @map("patient_id")
+  appointmentId String?  @map("appointment_id")
+  medicalRecordId String? @map("medical_record_id")
+  name          String   // Nom du document
+  type          String   // Type (PDF, Image, Radio, etc.)
+  category      String?  // Catégorie (Ordonnance, Bilan, Certificat, Radio, etc.)
+  fileUrl       String   @map("file_url") // URL du fichier
+  fileSize      Int?     @map("file_size") // Taille en bytes
+  mimeType      String?  @map("mime_type") // Type MIME
+  description   String?  // Description
+  uploadedBy    String?  @map("uploaded_by") // ID de l'utilisateur qui a uploadé
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  patient     Patient?     @relation("PatientDocument", fields: [patientId], references: [id], onDelete: Cascade)
+  appointment Appointment?  @relation("AppointmentDocument", fields: [appointmentId], references: [id], onDelete: Cascade)
+  medicalRecord MedicalRecord? @relation("MedicalRecordDocument", fields: [medicalRecordId], references: [id], onDelete: Cascade)
+
+  @@map("documents")
+  @@index([patientId])
+  @@index([appointmentId])
+  @@index([medicalRecordId])
+  @@index([category])
+  @@index([type])
+}
+
+// Modèle PrescriptionTemplate (Template de Prescription)
+model PrescriptionTemplate {
+  id          String   @id @default(uuid())
+  name        String   // Nom du template
+  description String?  // Description
+  content     Json     // Contenu du template (structure JSON)
+  design      Json?    // Design personnalisé (couleurs, logo, etc.)
+  isPublic    Boolean  @default(false) @map("is_public")
+  createdBy   String?  @map("created_by") // ID du médecin/admin
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("prescription_templates")
+  @@index([createdBy])
+  @@index([isPublic])
+}
+
+// Modèle StockMovement (Mouvement de Stock)
+model StockMovement {
+  id          String   @id @default(uuid())
+  medicamentId String  @map("medicament_id")
+  type        String   // Type (entree, sortie, ajustement, perte)
+  quantity    Int      // Quantité
+  reason      String?  // Raison (achat, prescription, perte, etc.)
+  referenceId String?  @map("reference_id") // ID de référence (prescription, commande, etc.)
+  notes       String?  // Notes
+  createdBy   String?  @map("created_by") // ID de l'utilisateur
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  medicament Medicament @relation("MedicamentStockMovement", fields: [medicamentId], references: [id], onDelete: Cascade)
+
+  @@map("stock_movements")
+  @@index([medicamentId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+// Modèle Reimbursement (Remboursement)
+model Reimbursement {
+  id              String   @id @default(uuid())
+  invoiceId       String   @map("invoice_id")
+  amount          Decimal  @db.Decimal(10, 2)
+  insuranceAmount Decimal? @map("insurance_amount") @db.Decimal(10, 2)
+  status          String   @default("pending") // pending, approved, rejected, paid
+  requestDate     DateTime @default(now()) @map("request_date")
+  approvalDate    DateTime? @map("approval_date")
+  paymentDate     DateTime? @map("payment_date")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  invoice Invoice @relation("InvoiceReimbursement", fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("reimbursements")
+  @@index([invoiceId])
+  @@index([status])
+  @@index([requestDate])
+}
