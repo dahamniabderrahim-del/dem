@@ -25,7 +25,7 @@ export async function PATCH(
     }
 
     // Vérifier que l'utilisateur est le réceptionniste destinataire
-    if (user.role === 'receptionniste' && notification.receptionistId !== user.id) {
+    if (user.role === 'receptionniste' && notification.receptionistId !== user.userId) {
       return NextResponse.json(
         { message: 'Non autorisé' },
         { status: 403 }
@@ -71,7 +71,7 @@ export async function DELETE(
 
     // Vérifier que l'utilisateur est le réceptionniste destinataire ou un admin
     if (user.role !== 'admin' && 
-        (user.role !== 'receptionniste' || notification.receptionistId !== user.id)) {
+        (user.role !== 'receptionniste' || notification.receptionistId !== user.userId)) {
       return NextResponse.json(
         { message: 'Non autorisé' },
         { status: 403 }
