@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
         fileSize,
         mimeType,
         description: description || null,
-        uploadedBy: user.id,
+        uploadedBy: user.userId,
       },
     });
 
