@@ -17,14 +17,14 @@ export async function GET(
   try {
     const prescriptions = await prisma.prescription.findMany({
       where: {
-        patients: {
+        appointments: {
           some: {
             patientId: params.patientId,
           },
         },
       },
       include: {
-        patients: {
+        appointments: {
           include: {
             patient: {
               select: {

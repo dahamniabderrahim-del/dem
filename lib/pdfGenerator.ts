@@ -153,7 +153,6 @@ export function generatePrescriptionPDF(
       ...(content.showInstructions && prescription.instructions ? [{ label: 'Instructions', value: prescription.instructions }] : []),
     ],
     footer: 'Clinique KARA Oran - Ordonnance médicale',
-    design: design, // Ajouter le design au data
   };
   
   generatePDFWithDesign(data, `ordonnance-${prescription.id.slice(0, 8)}.pdf`, design);

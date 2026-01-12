@@ -325,14 +325,19 @@ function ExaminationModal({
     setLoading(true);
 
     try {
+      const payload = {
+        ...formData,
+        requestedDate: new Date(formData.requestedDate),
+      };
+
       if (examination) {
         await examinationService.update(examination.id, {
-          ...formData,
+          ...payload,
           results: examination.results,
           status: examination.status,
         });
       } else {
-        await examinationService.create(formData);
+        await examinationService.create(payload);
       }
       onSuccess();
       onClose();

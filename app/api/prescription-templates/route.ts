@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       where: {
         OR: [
           { isPublic: true },
-          { createdBy: user.id },
+          { createdBy: user.userId },
         ],
       },
       orderBy: { createdAt: 'desc' },
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
         content,
         design: design || null,
         isPublic: isPublic || false,
-        createdBy: user.id,
+        createdBy: user.userId,
       },
     });
 

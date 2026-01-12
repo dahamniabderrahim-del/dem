@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyAuth, verifyAppointmentModification } from '@/lib/appointmentHelpers';
-import { calculateExpirationDate } from '@/lib/prescriptionUtils';
 
 export async function GET(request: NextRequest) {
   const user = verifyAuth(request);
@@ -18,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     const where: any = {};
     if (patientId) {
-      where.patients = {
+      where.appointments = {
         some: {
           patientId,
         },
@@ -28,7 +27,7 @@ export async function GET(request: NextRequest) {
     const prescriptions = await prisma.prescription.findMany({
       where,
       include: {
-        patients: {
+        appointments: {
           include: {
             patient: {
               select: {
@@ -36,6 +35,14 @@ export async function GET(request: NextRequest) {
                 firstName: true,
                 lastName: true,
                 phone: true,
+              },
+            },
+            doctor: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                specialty: true,
               },
             },
           },
@@ -73,12 +80,12 @@ export async function POST(request: NextRequest) {
     // Structure attendue:
     // {
     //   patientId: string,
+    //   appointmentId?: string,
     //   medicaments: [{ medicamentId, dosage, frequency, duration, quantity, instructions? }],
     //   notes?: string,
-    //   instructions?: string,
-    //   medicalRecordId?: string
+    //   instructions?: string
     // }
-    const { patientId, medicaments, notes, instructions, medicalRecordId } = data;
+    const { patientId, appointmentId, medicaments, instructions } = data;
 
     if (!patientId || !medicaments || !Array.isArray(medicaments) || medicaments.length === 0) {
       return NextResponse.json(
@@ -123,60 +130,74 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculer la date d'expiration (utiliser la durée la plus longue parmi les médicaments)
-    const prescribedDate = new Date();
-    const maxDuration = medicaments.reduce((max: string, med: any) => {
-      // Comparaison simple basée sur le nombre de jours
-      const currentDays = parseInt(med.duration) || 0;
-      const maxDays = parseInt(max) || 0;
-      return currentDays > maxDays ? med.duration : max;
-    }, medicaments[0].duration);
-    const expirationDate = calculateExpirationDate(prescribedDate, maxDuration);
+    const appointment = appointmentId
+      ? await prisma.appointment.findUnique({
+          where: { id: appointmentId },
+        })
+      : await prisma.appointment.findFirst({
+          where: { patientId },
+          orderBy: { date: 'desc' },
+        });
+
+    if (!appointment) {
+      return NextResponse.json(
+        { message: 'Aucun rendez-vous trouvé pour ce patient' },
+        { status: 404 }
+      );
+    }
 
     // Créer la prescription (ordonnance)
-    const prescription = await prisma.prescription.create({
-      data: {
-        instructions: instructions || null,
-        medicalRecordId: medicalRecordId || null,
-        prescribedBy: user.role === 'medecin' ? user.userId : null,
-        patients: {
-          create: {
-            patientId,
-            prescribedDate,
-            expirationDate,
-            status: 'active',
+    const prescription = await prisma.$transaction(async (tx) => {
+      const created = await tx.prescription.create({
+        data: {
+          instructions: instructions || null,
+          prescribedBy: user.role === 'medecin' ? user.userId : null,
+          medicaments: {
+            create: medicaments.map((med: any) => ({
+              medicamentId: med.medicamentId,
+              quantity: med.quantity || 1,
+              dosage: med.dosage,
+              frequency: med.frequency,
+              duration: med.duration,
+              instructions: med.instructions || null,
+            })),
           },
         },
-        medicaments: {
-          create: medicaments.map((med: any) => ({
-            medicamentId: med.medicamentId,
-            quantity: med.quantity || 1,
-            dosage: med.dosage,
-            frequency: med.frequency,
-            duration: med.duration,
-            instructions: med.instructions || null,
-          })),
-        },
-      },
-      include: {
-        patients: {
-          include: {
-            patient: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                phone: true,
+        include: {
+          appointments: {
+            include: {
+              patient: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  phone: true,
+                },
+              },
+              doctor: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  specialty: true,
+                },
               },
             },
           },
-        },
-        medicaments: {
-          include: {
-            medicament: true,
+          medicaments: {
+            include: {
+              medicament: true,
+            },
           },
         },
-      },
+      });
+
+      await tx.appointment.update({
+        where: { id: appointment.id },
+        data: { prescriptionId: created.id },
+      });
+
+      return created;
     });
 
     return NextResponse.json(prescription, { status: 201 });
@@ -188,4 +209,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

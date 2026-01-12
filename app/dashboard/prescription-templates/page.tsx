@@ -148,9 +148,9 @@ export default function PrescriptionTemplatesPage() {
                   <div className="flex items-center space-x-2 mb-2">
                     <h3 className="text-lg font-semibold text-gray-900">{template.name}</h3>
                     {template.isPublic ? (
-                      <Globe className="w-4 h-4 text-blue-600" title="Public" />
+                      <Globe className="w-4 h-4 text-blue-600" />
                     ) : (
-                      <Lock className="w-4 h-4 text-gray-400" title="Privé" />
+                      <Lock className="w-4 h-4 text-gray-400" />
                     )}
                   </div>
                   {template.description && (

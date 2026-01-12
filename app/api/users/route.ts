@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
 
 // Helper pour vérifier l'authentification admin
 function verifyAdmin(request: NextRequest) {
@@ -36,19 +35,60 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        phone: true,
-        specialty: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    const [admins, doctors, receptionists, nurses] = await Promise.all([
+      prisma.admin.findMany({
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          phone: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      prisma.doctor.findMany({
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          phone: true,
+          specialty: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      prisma.receptionist.findMany({
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          phone: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      prisma.nurse.findMany({
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          phone: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+    ]);
+
+    const users = [
+      ...admins.map((user) => ({ ...user, role: 'admin', specialty: null })),
+      ...doctors.map((user) => ({ ...user, role: 'medecin' })),
+      ...receptionists.map((user) => ({ ...user, role: 'receptionniste', specialty: null })),
+      ...nurses.map((user) => ({ ...user, role: 'infirmier', specialty: null })),
+    ];
 
     return NextResponse.json(users);
   } catch (error) {

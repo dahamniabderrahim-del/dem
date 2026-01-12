@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       where.receptionistId = receptionistId;
     } else if (user.role === 'receptionniste') {
       // Si c'est un réceptionniste, récupérer ses propres notifications
-      where.receptionistId = user.id;
+      where.receptionistId = user.userId;
     }
 
     if (unreadOnly) {
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Vérifier que le médecin est bien celui du rendez-vous
-    if (appointment.doctorId !== user.id) {
+    if (appointment.doctorId !== user.userId) {
       return NextResponse.json(
         { message: 'Vous n\'êtes pas le médecin assigné à ce rendez-vous' },
         { status: 403 }
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
     const notification = await prisma.doctorNotification.create({
       data: {
         appointmentId,
-        doctorId: user.id,
+        doctorId: user.userId,
         receptionistId: appointment.receptionistId,
         type,
         message: message || null,

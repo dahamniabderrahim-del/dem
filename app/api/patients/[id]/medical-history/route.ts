@@ -62,17 +62,6 @@ export async function GET(
                 medicament: true,
               },
             },
-            patients: {
-              include: {
-                patient: {
-                  select: {
-                    id: true,
-                    firstName: true,
-                    lastName: true,
-                  },
-                },
-              },
-            },
           },
         },
       },
@@ -93,4 +82,3 @@ export async function GET(
     );
   }
 }
-

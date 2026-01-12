@@ -109,10 +109,10 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Recherche dans les prescriptions (via patients)
+    // Recherche dans les prescriptions (via rendez-vous)
     const prescriptions = await prisma.prescription.findMany({
       where: {
-        patients: {
+        appointments: {
           some: {
             patient: {
               OR: [
@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
       },
       take: 10,
       include: {
-        patients: {
+        appointments: {
           include: {
             patient: {
               select: {

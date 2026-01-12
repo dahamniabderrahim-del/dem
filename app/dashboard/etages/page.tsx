@@ -267,8 +267,8 @@ function EtageModal({
     try {
       const etageData = {
         name: formData.name.trim(),
-        description: formData.description.trim() || null,
-        floorNumber: formData.floorNumber ? parseInt(formData.floorNumber) : null,
+        description: formData.description.trim() || undefined,
+        floorNumber: formData.floorNumber ? parseInt(formData.floorNumber) : undefined,
       };
 
       if (etage) {

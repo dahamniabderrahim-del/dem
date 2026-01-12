@@ -52,8 +52,8 @@ export default function PatientsPage() {
 
   // Stats
   const totalPatients = patients.length;
-  const malePatients = patients.filter(p => p.gender === 'M' || p.gender === 'male').length;
-  const femalePatients = patients.filter(p => p.gender === 'F' || p.gender === 'female').length;
+  const malePatients = patients.filter(p => p.gender === 'M').length;
+  const femalePatients = patients.filter(p => p.gender === 'F').length;
   const newThisMonth = patients.filter(p => {
     const created = new Date(p.createdAt);
     const now = new Date();
@@ -214,13 +214,13 @@ export default function PatientsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-3 py-1 rounded-md text-xs font-semibold ${
-                        (patient.gender === 'male' || patient.gender === 'M')
+                        (patient.gender === 'M')
                           ? 'bg-[#E0F4FF] text-[#3B9AEE]' 
-                          : (patient.gender === 'female' || patient.gender === 'F')
+                          : (patient.gender === 'F')
                           ? 'bg-[#FFE4E8] text-[#FF6B8A]'
                           : 'bg-gray-100 text-gray-600'
                       }`}>
-                        {(patient.gender === 'male' || patient.gender === 'M') ? 'Homme' : (patient.gender === 'female' || patient.gender === 'F') ? 'Femme' : patient.gender || '-'}
+                        {(patient.gender === 'M') ? 'Homme' : (patient.gender === 'F') ? 'Femme' : patient.gender || '-'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-gray-600">
@@ -324,8 +324,6 @@ function PatientModal({
     dateOfBirth: patient?.dateOfBirth ? new Date(patient.dateOfBirth).toISOString().split('T')[0] : '',
     gender: patient?.gender || '',
     address: patient?.address || '',
-    bloodType: patient?.bloodType || '',
-    emergencyContact: patient?.emergencyContact || '',
   });
   const [loading, setLoading] = useState(false);
 
@@ -334,10 +332,15 @@ function PatientModal({
     setLoading(true);
 
     try {
+      const payload = {
+        ...formData,
+        dateOfBirth: formData.dateOfBirth ? new Date(formData.dateOfBirth) : undefined,
+        gender: formData.gender as Patient['gender'],
+      };
       if (patient) {
-        await patientService.update(patient.id, formData);
+        await patientService.update(patient.id, payload);
       } else {
-        await patientService.create(formData);
+        await patientService.create(payload);
       }
       onSuccess();
       onClose();
@@ -420,43 +423,14 @@ function PatientModal({
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3B9AEE] focus:border-transparent"
               >
                 <option value="">Sélectionner</option>
-                <option value="male">Homme</option>
-                <option value="female">Femme</option>
+                <option value="M">Homme</option>
+                <option value="F">Femme</option>
+                <option value="Autre">Autre</option>
               </select>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Groupe sanguin</label>
-              <select
-                value={formData.bloodType}
-                onChange={(e) => setFormData({ ...formData, bloodType: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3B9AEE] focus:border-transparent"
-              >
-                <option value="">Sélectionner</option>
-                <option value="A+">A+</option>
-                <option value="A-">A-</option>
-                <option value="B+">B+</option>
-                <option value="B-">B-</option>
-                <option value="AB+">AB+</option>
-                <option value="AB-">AB-</option>
-                <option value="O+">O+</option>
-                <option value="O-">O-</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Contact d'urgence</label>
-              <input
-                type="text"
-                value={formData.emergencyContact}
-                onChange={(e) => setFormData({ ...formData, emergencyContact: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3B9AEE] focus:border-transparent"
-              />
-            </div>
-          </div>
-
-          <div>
+                    <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
             <textarea
               value={formData.address}

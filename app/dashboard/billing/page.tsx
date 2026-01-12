@@ -204,7 +204,12 @@ export default function BillingPage() {
 
 function InvoiceModal({ invoice, onClose, onSuccess }: { invoice: Invoice | null; onClose: () => void; onSuccess: () => void; }) {
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    patientId: string;
+    items: Array<{ description: string; quantity: number; unitPrice: number }>;
+    status: Invoice['status'];
+    notes: string;
+  }>({
     patientId: invoice?.patientId || '',
     items: invoice?.items || [{ description: '', quantity: 1, unitPrice: 0 }],
     status: invoice?.status || 'pending',
@@ -269,7 +274,7 @@ function InvoiceModal({ invoice, onClose, onSuccess }: { invoice: Invoice | null
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Statut</label>
-              <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3B9AEE]">
+              <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value as Invoice['status'] })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3B9AEE]">
                 <option value="pending">En attente</option>
                 <option value="paid">Payée</option>
                 <option value="cancelled">Annulée</option>

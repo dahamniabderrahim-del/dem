@@ -66,7 +66,7 @@ export default function BlocsPage() {
   const totalEtages = new Set(
     blocs
       .map((bloc) => bloc.etageId ?? bloc.etage?.id)
-      .filter((value): value is string | number => value !== null && value !== undefined)
+      .filter((value): value is string => Boolean(value))
   ).size;
 
   return (
@@ -245,7 +245,6 @@ function BlocModal({
     name: bloc?.name || '',
     description: bloc?.description || '',
     location: bloc?.location || '',
-    capacity: bloc?.capacity?.toString() || '',
     etageId: bloc?.etageId || '',
   });
   const [loading, setLoading] = useState(false);
@@ -279,9 +278,8 @@ function BlocModal({
     try {
       const blocData = {
         name: formData.name.trim(),
-        description: formData.description.trim() || null,
-        location: formData.location.trim() || null,
-        capacity: formData.capacity ? parseInt(formData.capacity) : null,
+        description: formData.description.trim() || undefined,
+        location: formData.location.trim() || undefined,
         etageId: formData.etageId,
       };
 
@@ -367,23 +365,6 @@ function BlocModal({
               placeholder="Ex: 1er etage, Aile Est, Batiment principal..."
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Capacite (nombre de salles)
-            </label>
-            <input
-              type="number"
-              min="1"
-              value={formData.capacity}
-              onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
-              placeholder="Ex: 5"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Nombre de salles ou espaces disponibles dans ce bloc
-            </p>
           </div>
 
           <div>

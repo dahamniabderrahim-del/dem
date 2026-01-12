@@ -226,10 +226,14 @@ function MedicamentModal({ medicament, onClose, onSuccess }: { medicament: Medic
     e.preventDefault();
     setLoading(true);
     try {
+      const payload = {
+        ...formData,
+        expiryDate: formData.expiryDate ? new Date(formData.expiryDate) : undefined,
+      };
       if (medicament) {
-        await medicamentService.update(medicament.id, formData);
+        await medicamentService.update(medicament.id, payload);
       } else {
-        await medicamentService.create(formData);
+        await medicamentService.create(payload);
       }
       onSuccess();
       onClose();

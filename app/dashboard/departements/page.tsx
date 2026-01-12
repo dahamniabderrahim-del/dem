@@ -470,8 +470,8 @@ function EtageModal({
     try {
       const data = {
         name: formData.name.trim(),
-        description: formData.description.trim() || null,
-        floorNumber: formData.floorNumber ? parseInt(formData.floorNumber) : null,
+        description: formData.description.trim() || undefined,
+        floorNumber: formData.floorNumber ? parseInt(formData.floorNumber) : undefined,
       };
 
       if (etage) {
@@ -584,8 +584,8 @@ function BlocModal({
     try {
       const data = {
         name: formData.name.trim(),
-        description: formData.description.trim() || null,
-        location: formData.location.trim() || null,
+        description: formData.description.trim() || undefined,
+        location: formData.location.trim() || undefined,
         etageId: formData.etageId,
       };
 
@@ -715,9 +715,9 @@ function SalleModal({
     try {
       const data = {
         name: formData.name.trim(),
-        description: formData.description.trim() || null,
-        capacity: formData.capacity ? parseInt(formData.capacity) : null,
-        equipment: formData.equipment.trim() || null,
+        description: formData.description.trim() || undefined,
+        capacity: formData.capacity ? parseInt(formData.capacity) : undefined,
+        equipment: formData.equipment.trim() || undefined,
         blocId: formData.blocId,
       };
 

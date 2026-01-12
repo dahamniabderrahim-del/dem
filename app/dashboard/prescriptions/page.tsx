@@ -47,13 +47,15 @@ export default function PrescriptionsPage() {
   };
 
   const handlePrint = (prescription: Prescription) => {
-    generatePrescriptionPDF({
-      patientName: `${prescription.patient?.firstName} ${prescription.patient?.lastName}`,
-      doctorName: `Dr. ${prescription.doctor?.firstName} ${prescription.doctor?.lastName}`,
-      date: new Date(prescription.createdAt).toLocaleDateString('fr-FR'),
-      medications: prescription.medications || [],
-      instructions: prescription.instructions || '',
-    });
+    if (!prescription.patient) {
+      alert('Patient manquant pour cette ordonnance.');
+      return;
+    }
+    generatePrescriptionPDF(
+      prescription,
+      prescription.patient,
+      prescription.medicaments || []
+    );
   };
 
   // Filtrer
@@ -119,7 +121,7 @@ export default function PrescriptionsPage() {
             </div>
             <div className="bg-[#FFE4E8] rounded-xl p-4 text-center border-2 border-[#FF6B8A]">
               <p className="text-gray-600 text-sm font-medium">Actifs</p>
-              <p className="text-3xl font-bold text-gray-800">{prescriptions.filter(p => p.status === 'active').length}</p>
+              <p className="text-3xl font-bold text-gray-800">{prescriptions.length}</p>
             </div>
           </div>
 
@@ -166,16 +168,12 @@ export default function PrescriptionsPage() {
                   <tr key={prescription.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 text-gray-600">{(currentPage - 1) * itemsPerPage + index + 1}</td>
                     <td className="px-4 py-3"><span className="font-medium text-gray-800">{prescription.patient?.firstName} {prescription.patient?.lastName}</span></td>
-                    <td className="px-4 py-3 text-gray-600">Dr. {prescription.doctor?.firstName} {prescription.doctor?.lastName}</td>
+                    <td className="px-4 py-3 text-gray-600">-</td>
                     <td className="px-4 py-3"><span className="text-[#3B9AEE] font-medium">{new Date(prescription.createdAt).toLocaleDateString('fr-FR')}</span></td>
-                    <td className="px-4 py-3 text-gray-600">{prescription.medications?.length || 0} médicament(s)</td>
+                    <td className="px-4 py-3 text-gray-600">{prescription.medicaments?.length || 0} médicament(s)</td>
                     <td className="px-4 py-3">
-                      <span className={`px-3 py-1 rounded-md text-xs font-semibold ${
-                        prescription.status === 'active' ? 'bg-[#E4FFE9] text-[#4ADE80]' :
-                        prescription.status === 'completed' ? 'bg-[#E0F4FF] text-[#3B9AEE]' :
-                        'bg-[#FFE4E4] text-[#FF6B6B]'
-                      }`}>
-                        {prescription.status === 'active' ? 'Actif' : prescription.status === 'completed' ? 'Terminé' : 'Annulé'}
+                      <span className="px-3 py-1 rounded-md text-xs font-semibold bg-gray-100 text-gray-600">
+                        N/A
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -220,11 +218,10 @@ function PrescriptionModal({ prescription, currentUser, onClose, onSuccess }: { 
   const [patients, setPatients] = useState<Patient[]>([]);
   const [doctors, setDoctors] = useState<User[]>([]);
   const [formData, setFormData] = useState({
-    patientId: prescription?.patientId || '',
-    doctorId: prescription?.doctorId || currentUser?.id || '',
-    medications: prescription?.medications || [{ name: '', dosage: '', frequency: '', duration: '' }],
+    patientId: prescription?.patient?.id || '',
+    doctorId: currentUser?.id || '',
+    medications: prescription?.medicaments?.map((med) => ({ name: med.medicament?.name || '', dosage: med.dosage || '', frequency: med.frequency || '', duration: med.duration || '' })) || [{ name: '', dosage: '', frequency: '', duration: '' }],
     instructions: prescription?.instructions || '',
-    status: prescription?.status || 'active',
   });
   const [loading, setLoading] = useState(false);
 
@@ -262,9 +259,9 @@ function PrescriptionModal({ prescription, currentUser, onClose, onSuccess }: { 
     setLoading(true);
     try {
       if (prescription) {
-        await prescriptionService.update(prescription.id, formData);
+        await prescriptionService.update(prescription.id, formData as any);
       } else {
-        await prescriptionService.create(formData);
+        await prescriptionService.create(formData as any);
       }
       onSuccess();
       onClose();

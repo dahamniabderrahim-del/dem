@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
           reason: reason || null,
           referenceId: referenceId || null,
           notes: notes || null,
-          createdBy: user.id,
+          createdBy: user.userId,
         },
       }),
       prisma.medicament.update({

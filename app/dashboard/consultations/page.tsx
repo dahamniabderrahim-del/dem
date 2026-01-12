@@ -212,7 +212,15 @@ export default function ConsultationsPage() {
 function ConsultationModal({ consultation, currentUser, onClose, onSuccess }: { consultation: Consultation | null; currentUser: User | null; onClose: () => void; onSuccess: () => void; }) {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [doctors, setDoctors] = useState<User[]>([]);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    patientId: string;
+    doctorId: string;
+    date: string;
+    diagnosis: string;
+    treatment: string;
+    notes: string;
+    status: Consultation['status'];
+  }>({
     patientId: consultation?.patientId || '',
     doctorId: consultation?.doctorId || currentUser?.id || '',
     date: consultation?.date ? new Date(consultation.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
@@ -236,10 +244,15 @@ function ConsultationModal({ consultation, currentUser, onClose, onSuccess }: { 
     e.preventDefault();
     setLoading(true);
     try {
+      const payload = {
+        ...formData,
+        date: new Date(formData.date),
+        status: formData.status as Consultation['status'],
+      };
       if (consultation) {
-        await consultationService.update(consultation.id, formData);
+        await consultationService.update(consultation.id, payload);
       } else {
-        await consultationService.create(formData);
+        await consultationService.create(payload);
       }
       onSuccess();
       onClose();
@@ -281,7 +294,7 @@ function ConsultationModal({ consultation, currentUser, onClose, onSuccess }: { 
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Statut</label>
-              <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3B9AEE]">
+              <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value as Consultation['status'] })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3B9AEE]">
                 <option value="pending">En attente</option>
                 <option value="in-progress">En cours</option>
                 <option value="completed">Terminé</option>

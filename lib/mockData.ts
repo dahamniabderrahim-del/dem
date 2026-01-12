@@ -100,6 +100,7 @@ export let mockAppointments: Appointment[] = [
   {
     id: '1',
     patientId: '1',
+    receptionistId: '3',
     doctorId: '2',
     date: new Date(),
     time: '09:00',
@@ -111,5 +112,4 @@ export let mockAppointments: Appointment[] = [
     updatedAt: new Date(),
   },
 ];
-
 

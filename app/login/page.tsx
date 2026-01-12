@@ -10,7 +10,7 @@ import Logo from '@/components/Logo';
 export default function LoginPage() {
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
-  const [activeTab] = useState<'login' | 'signup'>('login'); // Désactivé : le recrutement se fait par l'admin
+  const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login'); // Désactivé : le recrutement se fait par l'admin
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

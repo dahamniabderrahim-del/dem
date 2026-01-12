@@ -22,7 +22,7 @@ export async function GET(
     }
 
     // Vérifier les permissions
-    if (!template.isPublic && template.createdBy !== user.id) {
+    if (!template.isPublic && template.createdBy !== user.userId) {
       return NextResponse.json({ message: 'Non autorisé' }, { status: 403 });
     }
 
@@ -59,7 +59,7 @@ export async function PUT(
     }
 
     // Vérifier que l'utilisateur est le propriétaire ou admin
-    if (template.createdBy !== user.id && user.role !== 'admin') {
+    if (template.createdBy !== user.userId && user.role !== 'admin') {
       return NextResponse.json({ message: 'Non autorisé' }, { status: 403 });
     }
 
@@ -105,7 +105,7 @@ export async function DELETE(
     }
 
     // Vérifier que l'utilisateur est le propriétaire ou admin
-    if (template.createdBy !== user.id && user.role !== 'admin') {
+    if (template.createdBy !== user.userId && user.role !== 'admin') {
       return NextResponse.json({ message: 'Non autorisé' }, { status: 403 });
     }
 

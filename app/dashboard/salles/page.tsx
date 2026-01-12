@@ -304,9 +304,9 @@ function SalleModal({
     try {
       const salleData = {
         name: formData.name.trim(),
-        description: formData.description.trim() || null,
-        capacity: formData.capacity ? parseInt(formData.capacity) : null,
-        equipment: formData.equipment.trim() || null,
+        description: formData.description.trim() || undefined,
+        capacity: formData.capacity ? parseInt(formData.capacity) : undefined,
+        equipment: formData.equipment.trim() || undefined,
         blocId: formData.blocId,
       };
 
